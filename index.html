@@ -1,1 +1,354 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Ultimate Quiz Platform</title>
 
+<style>
+body{
+margin:0;
+font-family:'Segoe UI',sans-serif;
+background:linear-gradient(135deg,#6366f1,#22c55e,#f59e0b,#ec4899);
+background-size:300% 300%;
+animation:bgMove 10s infinite alternate;
+text-align:center;
+}
+@keyframes bgMove{
+0%{background-position:left;}
+100%{background-position:right;}
+}
+
+.card{
+width:420px;
+margin:40px auto;
+padding:25px;
+border-radius:20px;
+background:rgba(255,255,255,0.95);
+}
+
+button{
+width:85%;
+padding:12px;
+margin:8px;
+border:none;
+border-radius:12px;
+background:linear-gradient(45deg,#3b82f6,#06b6d4,#22c55e);
+color:white;
+font-weight:bold;
+cursor:pointer;
+}
+
+.option{
+background:#f1f5f9;
+color:#000;
+display:flex;
+align-items:center;
+gap:10px;
+}
+
+.option span{font-size:20px;}
+
+.correct{background:#22c55e !important;color:white;}
+.wrong{background:#ef4444 !important;color:white;}
+
+.hidden{display:none;}
+
+.progress{height:8px;background:#e2e8f0;border-radius:10px;}
+.bar{height:100%;background:linear-gradient(90deg,#22c55e,#3b82f6,#ec4899);width:0%;}
+</style>
+</head>
+
+<body>
+
+<div class="card" id="login">
+<h2>Ultimate Quiz Platform</h2>
+<input id="username" placeholder="Enter Name"><br><br>
+<button onclick="goToField()">Start</button>
+</div>
+
+<div class="card hidden" id="fieldBox">
+<h2>Select Field</h2>
+<button onclick="selectField('engineering')">Engineering</button>
+<button onclick="selectField('medical')">Medical</button>
+<button onclick="selectField('science')">Science</button>
+<button onclick="selectField('math')">Math</button>
+<button onclick="selectField('general')">General</button>
+</div>
+
+<div class="card hidden" id="quiz">
+<div class="progress"><div class="bar" id="bar"></div></div>
+
+<h3 id="levelText"></h3>
+<h3 id="score"></h3>
+<h3 id="xp"></h3>
+<h3 id="rank"></h3>
+
+<h3 id="question"></h3>
+<div id="options"></div>
+
+<p>⏱️ <span id="time"></span>s</p>
+<h3 id="feedback"></h3>
+</div>
+
+<div class="card hidden" id="levelComplete">
+<h2>Level Completed 🎉</h2>
+<h3 id="finalScore"></h3>
+<h3 id="finalXP"></h3>
+
+<button onclick="nextLevel()">Next Level</button>
+<button onclick="quitGame()">Quit</button>
+</div>
+
+<script>
+
+// LEVELS
+let levels=[
+{name:"Easy",time:10,xp:5},
+{name:"Medium",time:7,xp:10},
+{name:"Hard",time:5,xp:15}
+];
+
+let levelIndex=0;
+
+// SHUFFLE FIX
+function shuffleOptions(question){
+let opts = question.options.map((opt, i)=>({
+text:opt,
+correct:i===question.answer
+}));
+opts.sort(()=>Math.random()-0.5);
+question.options = opts.map(o=>o.text);
+question.answer = opts.findIndex(o=>o.correct);
+return question;
+}
+
+// ALL QUESTIONS (FULL)
+let allQuestions={
+
+// ENGINEERING
+engineering:{
+Easy:[
+{q:"HTML stands for?",options:["Hyper Text Markup Language","High Text","Home Tool","None"],answer:0},
+{q:"CSS used for?",options:["Styling","Logic","DB","None"],answer:0},
+{q:"CPU full form?",options:["Central Processing Unit","Core","Control","None"],answer:0},
+{q:"Keyboard is?",options:["Input","Output","Both","None"],answer:0}],
+Medium:[
+{q:"Binary of 5?",options:["101","110","111","100"],answer:0},
+{q:"RAM is?",options:["Memory","Storage","CPU","Input"],answer:0},
+{q:"1 KB=?",options:["1024","1000","512","2048"],answer:0},
+{q:"Monitor is?",options:["Input","Output","Both","None"],answer:1}],
+Hard:[
+{q:"Stack follows?",options:["FIFO","LIFO","Random","None"],answer:1},
+{q:"Queue follows?",options:["FIFO","LIFO","Random","None"],answer:0},
+{q:"Binary search?",options:["O(n)","O(log n)","O(n²)","O(1)"],answer:1},
+{q:"Compiler does?",options:["Translate","Execute","Delete","Store"],answer:0}]
+},
+
+// MEDICAL
+medical:{
+Easy:[
+{q:"Heart pumps?",options:["Blood","Air","Water","None"],answer:0},
+{q:"Body temperature?",options:["37°C","40°C","30°C","20°C"],answer:0},
+{q:"Blood color?",options:["Red","Blue","Green","Yellow"],answer:0},
+{q:"Doctor treats?",options:["Patients","Cars","Food","None"],answer:0}],
+Medium:[
+{q:"Bones in body?",options:["206","100","300","150"],answer:0},
+{q:"Largest organ?",options:["Skin","Heart","Liver","Brain"],answer:0},
+{q:"Vitamin C source?",options:["Orange","Rice","Milk","Egg"],answer:0},
+{q:"Brain controls?",options:["Body","Car","Air","None"],answer:0}],
+Hard:[
+{q:"DNA full form?",options:["Deoxyribo Nucleic Acid","Data","RNA","None"],answer:0},
+{q:"Insulin controls?",options:["Sugar","Salt","Fat","Protein"],answer:0},
+{q:"BP unit?",options:["mmHg","kg","cm","m"],answer:0},
+{q:"RBC carries?",options:["Oxygen","Water","Food","None"],answer:0}]
+},
+
+// SCIENCE
+science:{
+Easy:[
+{q:"Sun is?",options:["Star","Planet","Moon","Gas"],answer:0},
+{q:"Water formula?",options:["H2O","CO2","O2","NaCl"],answer:0},
+{q:"Earth is?",options:["Planet","Star","Galaxy","Moon"],answer:0},
+{q:"Gas we breathe?",options:["Oxygen","CO2","Hydrogen","Nitrogen"],answer:0}],
+Medium:[
+{q:"Force unit?",options:["Newton","Watt","Joule","Pascal"],answer:0},
+{q:"Gravity by?",options:["Newton","Einstein","Tesla","Edison"],answer:0},
+{q:"Boiling point?",options:["100°C","50°C","90°C","80°C"],answer:0},
+{q:"Speed sound?",options:["343 m/s","100","500","700"],answer:0}],
+Hard:[
+{q:"Atomic no H?",options:["1","2","3","4"],answer:0},
+{q:"E=mc² by?",options:["Einstein","Newton","Tesla","Bohr"],answer:0},
+{q:"pH neutral?",options:["7","5","9","1"],answer:0},
+{q:"Energy unit?",options:["Joule","Newton","Watt","Volt"],answer:0}]
+},
+
+// MATH
+math:{
+Easy:[
+{q:"5+3?",options:["8","7","6","9"],answer:0},
+{q:"10-4?",options:["6","5","7","8"],answer:0},
+{q:"2×3?",options:["6","5","4","7"],answer:0},
+{q:"9÷3?",options:["3","2","4","5"],answer:0}],
+Medium:[
+{q:"12×2?",options:["24","22","20","26"],answer:0},
+{q:"15÷3?",options:["5","4","6","3"],answer:0},
+{q:"Square 9?",options:["81","72","90","100"],answer:0},
+{q:"20% of 100?",options:["20","10","30","40"],answer:0}],
+Hard:[
+{q:"Square 12?",options:["144","121","100","169"],answer:0},
+{q:"Cube 3?",options:["27","9","18","36"],answer:0},
+{q:"√144?",options:["12","11","10","13"],answer:0},
+{q:"log10 100?",options:["2","1","3","4"],answer:0}]
+},
+
+// GENERAL
+general:{
+Easy:[
+{q:"Capital India?",options:["Delhi","Mumbai","Chennai","Kolkata"],answer:0},
+{q:"2+2?",options:["4","3","5","6"],answer:0},
+{q:"Sun rises?",options:["East","West","North","South"],answer:0},
+{q:"Water is?",options:["Liquid","Solid","Gas","All"],answer:3}],
+Medium:[
+{q:"Largest ocean?",options:["Pacific","Indian","Atlantic","Arctic"],answer:0},
+{q:"5×6?",options:["30","20","25","35"],answer:0},
+{q:"Earth shape?",options:["Round","Flat","Cube","Triangle"],answer:0},
+{q:"National bird?",options:["Peacock","Crow","Parrot","Sparrow"],answer:0}],
+Hard:[
+{q:"9×9?",options:["81","72","90","99"],answer:0},
+{q:"Binary 10?",options:["1010","100","111","110"],answer:0},
+{q:"Square 12?",options:["144","121","100","169"],answer:0},
+{q:"Cube 3?",options:["27","9","18","36"],answer:0}]
+}
+
+};
+
+// (remaining JS EXACTLY SAME as yours — not changed)
+
+let user="",field="",qset=[];
+let i=0,score=0,xp=0,timeLeft,timer;
+
+function getRank(xp){
+if(xp>=120) return "Master";
+if(xp>=60) return "Pro";
+return "Beginner";
+}
+
+function goToField(){
+user=username.value.trim();
+if(!user){alert("Enter name");return;}
+login.classList.add("hidden");
+fieldBox.classList.remove("hidden");
+}
+
+function selectField(f){
+field=f;
+fieldBox.classList.add("hidden");
+quiz.classList.remove("hidden");
+levelIndex=0;
+startQuiz();
+}
+
+function startQuiz(){
+i=0;
+let levelName=levels[levelIndex].name;
+qset=[...allQuestions[field][levelName]];
+levelText.innerText="Level: "+levelName;
+updateUI();
+load();
+}
+
+function load(){
+clearInterval(timer);
+
+let q = shuffleOptions({...qset[i]});
+
+question.innerText=q.q;
+options.innerHTML="";
+
+let icons=["🅐","🅑","🅒","🅓"];
+
+q.options.forEach((o,idx)=>{
+let btn=document.createElement("button");
+btn.innerHTML=`<span>${icons[idx]}</span> ${o}`;
+btn.classList.add("option");
+btn.onclick=()=>check(idx,q.answer);
+options.appendChild(btn);
+});
+
+timeLeft=levels[levelIndex].time;
+time.innerText=timeLeft;
+
+timer=setInterval(()=>{
+timeLeft--;
+time.innerText=timeLeft;
+if(timeLeft<=0) wrong();
+},1000);
+
+bar.style.width=((i+1)/qset.length*100)+"%";
+}
+
+function check(ans,correct){
+clearInterval(timer);
+let buttons=document.querySelectorAll("#options button");
+
+buttons.forEach(btn=>btn.disabled=true);
+
+if(ans===correct){
+buttons[ans].classList.add("correct");
+xp+=levels[levelIndex].xp;
+score++;
+feedback.innerText="✅ Correct!";
+}else{
+buttons[ans].classList.add("wrong");
+buttons[correct].classList.add("correct");
+feedback.innerText="❌ Wrong!";
+}
+
+updateUI();
+setTimeout(next,1000);
+}
+
+function wrong(){
+feedback.innerText="⏰ Time Up!";
+setTimeout(next,1000);
+}
+
+function next(){
+i++;
+if(i<qset.length){
+load();
+}else{
+quiz.classList.add("hidden");
+levelComplete.classList.remove("hidden");
+finalScore.innerText="Score: "+score;
+finalXP.innerText="XP: "+xp;
+}
+}
+
+function nextLevel(){
+levelComplete.classList.add("hidden");
+levelIndex++;
+
+if(levelIndex<levels.length){
+quiz.classList.remove("hidden");
+startQuiz();
+}else{
+alert("🎉 Completed!\nRank: "+getRank(xp));
+location.reload();
+}
+}
+
+function quitGame(){
+alert("You quit!");
+location.reload();
+}
+
+function updateUI(){
+score.innerText="⭐ Score: "+score;
+xp.innerText="💎 XP: "+xp;
+rank.innerText="🏅 Rank: "+getRank(xp);
+}
+
+</script>
+
+</body>
+</html>
